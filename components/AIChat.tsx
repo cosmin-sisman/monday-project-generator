@@ -119,33 +119,34 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
 
       const data = await response.json();
       
-      // Reload conversation from DB
-      await loadConversationHistory();
+      // Add AI response to messages IMMEDIATELY (before reload)
+      setMessages((prev) => [...prev, { 
+        role: "assistant", 
+        content: data.message || data.response || "Changes applied successfully" 
+      }]);
       
       // If AI made updates to the project, show success and reload
       if (data.updated) {
         toast.success("✅ Changes applied to project!");
         
-        // Show actions performed
+        // Show actions performed with better formatting
         if (data.actions && data.actions.length > 0) {
-          setTimeout(() => {
-            data.actions.forEach((action: string, i: number) => {
-              setTimeout(() => {
-                toast.info(action);
-              }, i * 500);
-            });
-          }, 500);
+          const actionsText = data.actions.join("\n• ");
+          toast.info(`Actions performed:\n• ${actionsText}`, { duration: 5000 });
         }
         
-        // Reload project
+        // Reload project after a short delay to show the message first
         if (onProjectUpdated) {
           setTimeout(() => {
             onProjectUpdated();
-          }, 1500);
+          }, 2000);
         }
         
         // Check if backup is available for undo
         checkBackupAvailability();
+      } else {
+        // Even if no update, reload conversation to sync with DB
+        setTimeout(() => loadConversationHistory(), 500);
       }
     } catch (error) {
       console.error("Error in chat:", error);
