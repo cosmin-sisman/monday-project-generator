@@ -34,33 +34,16 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
 
   // Load conversation history from DB
   useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/AIChat.tsx:36',message:'useEffect triggered',data:{projectId},hypothesisId:'H6',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    
     loadConversationHistory();
     checkBackupAvailability();
   }, [projectId]);
 
   const loadConversationHistory = async () => {
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/AIChat.tsx:42',message:'Loading conversation history',data:{projectId,currentMessageCount:messages.length},hypothesisId:'H6',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      
       const response = await fetch(`/api/projects/${projectId}/conversations`);
       if (!response.ok) return;
       const data = await response.json();
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/AIChat.tsx:50',message:'Conversation loaded from API',data:{conversationsReceived:data.conversations?.length||0,firstFewMessages:data.conversations?.slice(0,3)||[]},hypothesisId:'H6',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      
       setMessages(data.conversations || []);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/AIChat.tsx:56',message:'Messages state updated',data:{newMessageCount:messages.length},hypothesisId:'H6',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
     } catch (error) {
       console.error("Error loading conversation:", error);
     }
@@ -136,20 +119,12 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
 
       const data = await response.json();
       
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/AIChat.tsx:122',message:'AI response received',data:{hasMessage:!!data.message,hasResponse:!!data.response,hasUpdated:!!data.updated,actions:data.actions||[]},hypothesisId:'H7',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-      
       // Add AI response to messages IMMEDIATELY (before reload)
       const aiMessage = data.message || data.response || "Changes applied successfully";
       setMessages((prev) => [...prev, { 
         role: "assistant", 
         content: aiMessage
       }]);
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'components/AIChat.tsx:134',message:'Added AI message to state',data:{aiMessage,currentMessagesCount:messages.length+1},hypothesisId:'H7',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       
       // If AI made updates to the project, show success and reload
       if (data.updated) {

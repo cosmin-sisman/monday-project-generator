@@ -45,10 +45,6 @@ export async function POST(request: NextRequest) {
       .eq('project_id', projectId)
       .order('created_at', { ascending: true });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/chat/route.ts:47',message:'Project loaded from DB',data:{projectId,groupCount:project.groups?.length||0,totalGroups:project.groups?.map((g:any)=>({id:g.id,title:g.title,taskCount:g.tasks?.length||0}))},hypothesisId:'H3',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
     // Build context for AI with EXPLICIT ID mapping
     const projectContext = `
 Current Project: ${project.title}
@@ -150,10 +146,6 @@ EXAMPLES OF CORRECT BEHAVIOR:
 
 THE GOLDEN RULE: When in doubt, KEEP IT. Only delete if explicitly asked.`;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/chat/route.ts:122',message:'Messages sent to OpenAI',data:{messageCount:conversationHistory?.length||0,userMessage:message,contextGroupCount:project.groups?.length||0},hypothesisId:'H3,H4',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-
     // Call OpenAI with JSON mode
     const messages = [
       { role: 'system' as const, content: systemPrompt },
@@ -177,10 +169,6 @@ THE GOLDEN RULE: When in doubt, KEEP IT. Only delete if explicitly asked.`;
 
     // Parse AI response
     const parsed = JSON.parse(aiResponse);
-
-    // #region agent log
-    fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/chat/route.ts:143',message:'AI response parsed',data:{hasUpdatedProject:!!parsed.updated_project,groupsInResponse:parsed.updated_project?.groups?.length||0,groupsInResponseDetail:parsed.updated_project?.groups?.map((g:any)=>({id:g.id,title:g.title,taskCount:g.tasks?.length||0}))||[]},hypothesisId:'H1,H2',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     // Save user message to conversation history
     await supabase.from('ai_conversations').insert({
@@ -289,10 +277,6 @@ THE GOLDEN RULE: When in doubt, KEEP IT. Only delete if explicitly asked.`;
         }
       }
 
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/chat/route.ts:243',message:'Before delete groups logic',data:{existingGroupIds:project.groups.map((g:any)=>g.id),updatedGroupIdsFromAI:updatedProject.groups.filter((g:any)=>g.id).map((g:any)=>g.id)},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
-
       // Remove groups that are no longer in the updated structure
       const updatedGroupIds = updatedProject.groups
         .filter((g: any) => g.id)
@@ -300,10 +284,6 @@ THE GOLDEN RULE: When in doubt, KEEP IT. Only delete if explicitly asked.`;
       
       const existingGroupIds = project.groups.map((g: any) => g.id);
       const groupsToDelete = existingGroupIds.filter((id: string) => !updatedGroupIds.includes(id));
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7245/ingest/7fd8b7a4-b84b-4183-a927-b59f70bf7df6',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/chat/route.ts:254',message:'Groups marked for deletion',data:{groupsToDeleteCount:groupsToDelete.length,groupsToDeleteIds:groupsToDelete},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       
       if (groupsToDelete.length > 0) {
         await supabase
