@@ -1,0 +1,90 @@
+// Prisma Schema for Monday Project Generator
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Project {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title              String
+  originalInput      String         @map("original_input") @db.Text
+  status             String         @default("draft") // 'draft' | 'validated' | 'synced'
+  mondayBoardId      String?        @map("monday_board_id")
+  mondayWorkspaceId  String?        @map("monday_workspace_id")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  groups             ProjectGroup[]
+  versions           ProjectVersion[]
+  conversations      AiConversation[]
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("projects")
+}
+
+model ProjectGroup {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId      String        @map("project_id") @db.Uuid
+  title          String
+  color          String        @default("#579BFC")
+  position       Int           @default(0)
+  mondayGroupId  String?       @map("monday_group_id")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  project        Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks          ProjectTask[]
+
+  @@index([projectId])
+  @@map("project_groups")
+}
+
+model ProjectTask {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  groupId         String       @map("group_id") @db.Uuid
+  title           String
+  description     String?      @db.Text
+  status          String       @default("pending")
+  priority        String       @default("medium") // 'low' | 'medium' | 'high'
+  estimatedHours  Decimal?     @map("estimated_hours") @db.Decimal
+  position        Int          @default(0)
+  mondayItemId    String?      @map("monday_item_id")
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  group           ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("project_tasks")
+}
+
+model ProjectVersion {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId          String   @map("project_id") @db.Uuid
+  snapshot           Json     @db.JsonB
+  changeDescription  String?  @map("change_description") @db.Text
+  createdBy          String?  @default("ai_assistant") @map("created_by")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Desc)])
+  @@map("project_versions")
+}
+
+model AiConversation {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId        String   @map("project_id") @db.Uuid
+  role             String   // 'user' | 'assistant'
+  content          String   @db.Text
+  actionsPerformed Json?    @map("actions_performed") @db.JsonB
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, createdAt(sort: Asc)])
+  @@map("ai_conversations")
+}
