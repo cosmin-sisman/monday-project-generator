@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { Send, Loader2, MessageSquare, Minimize2, Maximize2 } from "lucide-react";
+import { Send, Loader2, MessageSquare, Minimize2, Maximize2, Undo2 } from "lucide-react";
 import { ChatSuggestions } from "./ChatSuggestions";
 
 interface AIChatProps {
@@ -20,6 +20,8 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isUndoing, setIsUndoing] = useState(false);
+  const [hasBackup, setHasBackup] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -29,6 +31,67 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load conversation history from DB
+  useEffect(() => {
+    loadConversationHistory();
+    checkBackupAvailability();
+  }, [projectId]);
+
+  const loadConversationHistory = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/conversations`);
+      if (!response.ok) return;
+      const data = await response.json();
+      setMessages(data.conversations || []);
+    } catch (error) {
+      console.error("Error loading conversation:", error);
+    }
+  };
+
+  const checkBackupAvailability = async () => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}/versions`);
+      if (!response.ok) return;
+      const data = await response.json();
+      setHasBackup(data.versions && data.versions.length > 0);
+    } catch (error) {
+      console.error("Error checking backups:", error);
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!hasBackup) {
+      toast.error("No backup available to undo");
+      return;
+    }
+
+    setIsUndoing(true);
+    try {
+      const response = await fetch(`/api/projects/${projectId}/undo`, {
+        method: "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed to undo");
+
+      const data = await response.json();
+      toast.success("✅ " + data.message);
+      
+      // Reload project and check backup availability
+      if (onProjectUpdated) {
+        setTimeout(() => {
+          onProjectUpdated();
+        }, 500);
+      }
+      
+      checkBackupAvailability();
+    } catch (error) {
+      console.error("Error in undo:", error);
+      toast.error("Failed to undo changes");
+    } finally {
+      setIsUndoing(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -47,7 +110,6 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
         body: JSON.stringify({
           projectId,
           message: userMessage,
-          conversationHistory: messages,
         }),
       });
 
@@ -56,7 +118,9 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
       }
 
       const data = await response.json();
-      setMessages(data.conversationHistory);
+      
+      // Reload conversation from DB
+      await loadConversationHistory();
       
       // If AI made updates to the project, show success and reload
       if (data.updated) {
@@ -79,6 +143,9 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
             onProjectUpdated();
           }, 1500);
         }
+        
+        // Check if backup is available for undo
+        checkBackupAvailability();
       }
     } catch (error) {
       console.error("Error in chat:", error);
@@ -105,12 +172,28 @@ export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
           <MessageSquare className="h-5 w-5" />
           <h3 className="font-semibold">AI Assistant</h3>
         </div>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-white hover:bg-white/20 p-1.5 rounded-lg transition-colors"
-        >
-          {isExpanded ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center space-x-2">
+          {hasBackup && (
+            <button
+              onClick={handleUndo}
+              disabled={isUndoing}
+              className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Undo last AI change"
+            >
+              {isUndoing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Undo2 className="h-4 w-4" />
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-white hover:bg-white/20 p-1.5 rounded-lg transition-colors"
+          >
+            {isExpanded ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       <div className={`flex flex-col ${isExpanded ? 'h-[calc(100vh-180px)]' : 'h-96'}`}>

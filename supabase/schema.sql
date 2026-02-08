@@ -54,3 +54,27 @@ $$ language 'plpgsql';
 
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Versioning for project backups (undo functionality)
+CREATE TABLE IF NOT EXISTS project_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  snapshot JSONB NOT NULL, -- Full project structure snapshot
+  change_description TEXT,
+  created_by TEXT DEFAULT 'ai_assistant',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- AI Conversation history
+CREATE TABLE IF NOT EXISTS ai_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content TEXT NOT NULL,
+  actions_performed JSONB, -- Array of actions for assistant messages
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_project_versions_project_id ON project_versions(project_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_ai_conversations_project_id ON ai_conversations(project_id, created_at ASC);

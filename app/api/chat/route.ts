@@ -8,7 +8,7 @@ const openai = new OpenAI({
 
 export async function POST(request: NextRequest) {
   try {
-    const { projectId, message, conversationHistory } = await request.json();
+    const { projectId, message } = await request.json();
 
     if (!projectId || !message) {
       return NextResponse.json(
@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Fetch conversation history from DB
+    const { data: conversationHistory } = await supabase
+      .from('ai_conversations')
+      .select('role, content')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
 
     // Build context for AI
     const projectContext = `
@@ -92,20 +99,22 @@ RESPONSE FORMAT (YOU MUST FOLLOW THIS):
   }
 }
 
-IMPORTANT:
-- If adding NEW groups/tasks, set "id" to null
-- If modifying EXISTING groups/tasks, keep their existing "id"
-- If removing groups/tasks, simply omit them from the updated structure
-- ALWAYS return the COMPLETE updated project structure, not just the changes
-- Be proactive and make the changes the user requests
+CRITICAL RULES - NEVER BREAK THESE:
+1. When adding tasks/groups, KEEP ALL EXISTING ones unless explicitly told to remove them
+2. ALWAYS include ALL existing groups in the updated structure (with their IDs)
+3. If adding NEW groups/tasks, set "id" to null
+4. If modifying EXISTING groups/tasks, keep their existing "id"
+5. Only remove groups/tasks if the user EXPLICITLY says "remove", "delete", "șterge"
+6. When user says "add", "adaugă" → ONLY ADD, don't remove anything
+7. PRESERVE the entire project structure and only make the specific changes requested
 
 Examples:
-- "Add 2 tasks to Development" → Actually add them with proper descriptions
-- "Remove Planning group" → Remove it from the structure
-- "Change this to high priority" → Update the priority in the structure
-- "Make descriptions more detailed" → Rewrite descriptions with more details
+- "Add 2 tasks to Development" → Keep all existing groups and tasks, ADD 2 new tasks
+- "Adaugă mai multe taskuri" → Keep everything, ADD new tasks
+- "Remove Planning group" → Keep all other groups, remove only Planning
+- "Change this to high priority" → Keep everything, update only the priority
 
-You are an ACTION-TAKING assistant. Execute, don't just suggest!`;
+BE CONSERVATIVE: If in doubt, KEEP the existing structure and only add/modify what's requested!`;
 
     // Call OpenAI with JSON mode
     const messages = [
@@ -131,8 +140,28 @@ You are an ACTION-TAKING assistant. Execute, don't just suggest!`;
     // Parse AI response
     const parsed = JSON.parse(aiResponse);
 
+    // Save user message to conversation history
+    await supabase.from('ai_conversations').insert({
+      project_id: projectId,
+      role: 'user',
+      content: message,
+    });
+
     // If AI provided an updated project structure, save it
     if (parsed.updated_project && parsed.updated_project.groups) {
+      // CREATE BACKUP BEFORE MODIFYING
+      const backupSnapshot = {
+        title: project.title,
+        groups: project.groups,
+        timestamp: new Date().toISOString(),
+      };
+
+      await supabase.from('project_versions').insert({
+        project_id: projectId,
+        snapshot: backupSnapshot,
+        change_description: parsed.actions_performed?.join('; ') || 'AI modification',
+        created_by: 'ai_assistant',
+      });
       const updatedProject = parsed.updated_project;
 
       // Update project title if changed
@@ -254,16 +283,19 @@ You are an ACTION-TAKING assistant. Execute, don't just suggest!`;
       }
     }
 
+    // Save assistant response to conversation history
+    await supabase.from('ai_conversations').insert({
+      project_id: projectId,
+      role: 'assistant',
+      content: parsed.message,
+      actions_performed: parsed.actions_performed || [],
+    });
+
     return NextResponse.json({
       message: parsed.message,
       actions: parsed.actions_performed || [],
       response: parsed.message,
       updated: !!parsed.updated_project,
-      conversationHistory: [
-        ...(conversationHistory || []),
-        { role: 'user', content: message },
-        { role: 'assistant', content: parsed.message },
-      ],
     });
   } catch (error) {
     console.error('Error in chat:', error);
