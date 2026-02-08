@@ -10,7 +10,8 @@ import {
   Layers,
   Key,
   FileText,
-  Zap
+  Zap,
+  FolderOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -19,6 +20,11 @@ const menuItems = [
     title: "Home",
     href: "/",
     icon: Home,
+  },
+  {
+    title: "All Projects",
+    href: "/projects",
+    icon: FolderOpen,
   },
   {
     title: "AI Configuration",

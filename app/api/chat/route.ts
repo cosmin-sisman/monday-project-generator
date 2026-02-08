@@ -99,22 +99,27 @@ RESPONSE FORMAT (YOU MUST FOLLOW THIS):
   }
 }
 
-CRITICAL RULES - NEVER BREAK THESE:
-1. When adding tasks/groups, KEEP ALL EXISTING ones unless explicitly told to remove them
-2. ALWAYS include ALL existing groups in the updated structure (with their IDs)
-3. If adding NEW groups/tasks, set "id" to null
-4. If modifying EXISTING groups/tasks, keep their existing "id"
-5. Only remove groups/tasks if the user EXPLICITLY says "remove", "delete", "șterge"
-6. When user says "add", "adaugă" → ONLY ADD, don't remove anything
-7. PRESERVE the entire project structure and only make the specific changes requested
+🚨 CRITICAL SAFETY RULES - NEVER BREAK THESE:
 
-Examples:
-- "Add 2 tasks to Development" → Keep all existing groups and tasks, ADD 2 new tasks
-- "Adaugă mai multe taskuri" → Keep everything, ADD new tasks
-- "Remove Planning group" → Keep all other groups, remove only Planning
-- "Change this to high priority" → Keep everything, update only the priority
+1. **DEFAULT MODE = ADD ONLY** - Unless user explicitly says "delete"/"remove"/"șterge", you ONLY ADD things
+2. **PRESERVE EVERYTHING** - Always copy ALL existing groups and tasks into updated_project
+3. **IDs are SACRED** - Keep existing IDs for all existing items, null only for new items
+4. **NO IMPLICIT DELETIONS** - Never remove items just because they're not mentioned
 
-BE CONSERVATIVE: If in doubt, KEEP the existing structure and only add/modify what's requested!`;
+DECISION TREE FOR EVERY REQUEST:
+- "adaugă X" / "add X" → ADD X to existing structure
+- "modifică Y" / "change Y" → UPDATE Y, keep everything else
+- "șterge Z" / "delete Z" / "remove Z" → ONLY NOW can you remove Z
+- Anything else → ADD or MODIFY, NEVER DELETE
+
+EXAMPLES OF CORRECT BEHAVIOR:
+❌ BAD: User says "adaugă grup Documentation" → You return ONLY Documentation group
+✅ GOOD: User says "adaugă grup Documentation" → You return ALL existing groups PLUS new Documentation group
+
+❌ BAD: User says "add 2 tasks" → You create new project with only 2 tasks  
+✅ GOOD: User says "add 2 tasks" → You keep ALL existing groups/tasks and ADD 2 new tasks
+
+THE GOLDEN RULE: When in doubt, KEEP IT. Only delete if explicitly asked.`;
 
     // Call OpenAI with JSON mode
     const messages = [

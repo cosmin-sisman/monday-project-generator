@@ -5,6 +5,7 @@ import { LayoutWithSidebar } from "@/app/layout-with-sidebar";
 import { ProjectStructure } from "@/components/ProjectStructure";
 import { MondaySelector } from "@/components/MondaySelector";
 import { AIChat } from "@/components/AIChat";
+import { VersionHistory } from "@/components/VersionHistory";
 import { Loader2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { Project } from "@/lib/types";
@@ -57,8 +58,19 @@ export default function ProjectPage() {
     <LayoutWithSidebar>
       <div className="min-h-screen">
         <div className="border-b bg-white px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Project Editor</h1>
-          <p className="mt-1 text-gray-600">Edit and refine your project structure</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Project Editor</h1>
+              <p className="mt-1 text-gray-600">Edit and refine your project structure</p>
+            </div>
+            <VersionHistory 
+              projectId={project.id} 
+              onRestore={() => {
+                fetchProject();
+                window.location.reload();
+              }}
+            />
+          </div>
         </div>
 
         <div className="container mx-auto px-8 py-8">
