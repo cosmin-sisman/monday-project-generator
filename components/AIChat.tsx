@@ -3,9 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { Send, Loader2, MessageSquare, Minimize2, Maximize2 } from "lucide-react";
+import { ChatSuggestions } from "./ChatSuggestions";
 
 interface AIChatProps {
   projectId: string;
+  onProjectUpdated?: () => void;
 }
 
 interface Message {
@@ -13,7 +15,7 @@ interface Message {
   content: string;
 }
 
-export function AIChat({ projectId }: AIChatProps) {
+export function AIChat({ projectId, onProjectUpdated }: AIChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -55,6 +57,29 @@ export function AIChat({ projectId }: AIChatProps) {
 
       const data = await response.json();
       setMessages(data.conversationHistory);
+      
+      // If AI made updates to the project, show success and reload
+      if (data.updated) {
+        toast.success("✅ Changes applied to project!");
+        
+        // Show actions performed
+        if (data.actions && data.actions.length > 0) {
+          setTimeout(() => {
+            data.actions.forEach((action: string, i: number) => {
+              setTimeout(() => {
+                toast.info(action);
+              }, i * 500);
+            });
+          }, 500);
+        }
+        
+        // Reload project
+        if (onProjectUpdated) {
+          setTimeout(() => {
+            onProjectUpdated();
+          }, 1500);
+        }
+      }
     } catch (error) {
       console.error("Error in chat:", error);
       toast.error("Failed to get AI response");
@@ -92,12 +117,17 @@ export function AIChat({ projectId }: AIChatProps) {
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.length === 0 && (
-            <div className="text-center text-gray-500 py-12">
-              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-sm">Ask AI to refine your project</p>
-              <p className="text-xs mt-2 text-gray-400">
-                Example: "Add more tasks to the Development group"
-              </p>
+            <div className="space-y-4">
+              <div className="text-center text-gray-500 py-8">
+                <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-sm font-medium">AI Assistant - Agentic Mode</p>
+                <p className="text-xs mt-2 text-gray-400">
+                  I will automatically modify your project based on your requests
+                </p>
+              </div>
+              <ChatSuggestions onSelect={(suggestion) => {
+                setInput(suggestion);
+              }} />
             </div>
           )}
 
@@ -110,9 +140,15 @@ export function AIChat({ projectId }: AIChatProps) {
                 className={`max-w-[80%] rounded-lg px-4 py-3 ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-100 text-gray-900"
+                    : "bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 text-gray-900"
                 }`}
               >
+                {msg.role === "assistant" && (
+                  <div className="flex items-center space-x-2 mb-2">
+                    <MessageSquare className="h-4 w-4 text-purple-600" />
+                    <span className="text-xs font-medium text-purple-600">AI Assistant</span>
+                  </div>
+                )}
                 <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
               </div>
             </div>

@@ -75,7 +75,13 @@ export default function ProjectPage() {
             {/* Right: AI Chat */}
             <div className="lg:col-span-1">
               <div className="sticky top-8">
-                <AIChat projectId={project.id} />
+                <AIChat 
+                  projectId={project.id}
+                  onProjectUpdated={() => {
+                    fetchProject();
+                    window.location.reload();
+                  }}
+                />
               </div>
             </div>
           </div>
