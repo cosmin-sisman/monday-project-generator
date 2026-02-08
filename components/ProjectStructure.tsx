@@ -8,12 +8,10 @@ import { toast } from "sonner";
 
 interface ProjectStructureProps {
   initialProject: Project;
-  onUpdate: (project: Project) => void;
 }
 
 export function ProjectStructure({
   initialProject,
-  onUpdate,
 }: ProjectStructureProps) {
   const [project, setProject] = useState(initialProject);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -37,7 +35,6 @@ export function ProjectStructure({
 
       const data = await response.json();
       setProject(data.project);
-      onUpdate(data.project);
       setIsEditingTitle(false);
       toast.success("Project title updated");
     } catch (error) {
@@ -74,7 +71,6 @@ export function ProjectStructure({
 
       const data = await response.json();
       setProject(data.project);
-      onUpdate(data.project);
       toast.success("Changes saved");
     } catch (error) {
       console.error("Error updating group:", error);

@@ -1,0 +1,163 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
+import { Send, Loader2, MessageSquare, Minimize2, Maximize2 } from "lucide-react";
+
+interface AIChatProps {
+  projectId: string;
+}
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export function AIChat({ projectId }: AIChatProps) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userMessage = input.trim();
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          projectId,
+          message: userMessage,
+          conversationHistory: messages,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get AI response");
+      }
+
+      const data = await response.json();
+      setMessages(data.conversationHistory);
+    } catch (error) {
+      console.error("Error in chat:", error);
+      toast.error("Failed to get AI response");
+      // Remove the user message if request failed
+      setMessages((prev) => prev.slice(0, -1));
+      setInput(userMessage); // Restore user's input
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <div className={`bg-white rounded-lg shadow-lg ${isExpanded ? 'fixed inset-4 z-50' : ''}`}>
+      <div className="border-b px-6 py-4 flex items-center justify-between bg-gradient-to-r from-blue-600 to-purple-600">
+        <div className="flex items-center space-x-2 text-white">
+          <MessageSquare className="h-5 w-5" />
+          <h3 className="font-semibold">AI Assistant</h3>
+        </div>
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-white hover:bg-white/20 p-1.5 rounded-lg transition-colors"
+        >
+          {isExpanded ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+        </button>
+      </div>
+
+      <div className={`flex flex-col ${isExpanded ? 'h-[calc(100vh-180px)]' : 'h-96'}`}>
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {messages.length === 0 && (
+            <div className="text-center text-gray-500 py-12">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-sm">Ask AI to refine your project</p>
+              <p className="text-xs mt-2 text-gray-400">
+                Example: "Add more tasks to the Development group"
+              </p>
+            </div>
+          )}
+
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-lg px-4 py-3 ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-900"
+                }`}
+              >
+                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+              </div>
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="bg-gray-100 rounded-lg px-4 py-3">
+                <Loader2 className="h-5 w-5 animate-spin text-gray-600" />
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="border-t p-4 bg-gray-50">
+          <div className="flex space-x-2">
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask AI to add, remove, or modify groups and tasks..."
+              rows={2}
+              disabled={isLoading}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+            />
+            <button
+              onClick={handleSend}
+              disabled={isLoading || !input.trim()}
+              className="px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+            >
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Press Enter to send, Shift+Enter for new line
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

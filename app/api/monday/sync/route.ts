@@ -90,6 +90,33 @@ export async function POST(request: NextRequest) {
             task.title
           );
 
+          // Add description as an update to the item
+          if (task.description) {
+            try {
+              await fetch('https://api.monday.com/v2', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': process.env.MONDAY_API_TOKEN!,
+                  'API-Version': '2024-10',
+                },
+                body: JSON.stringify({
+                  query: `mutation ($itemId: ID!, $body: String!) {
+                    create_update(item_id: $itemId, body: $body) {
+                      id
+                    }
+                  }`,
+                  variables: {
+                    itemId: mondayItem.id,
+                    body: `📋 Description:\n\n${task.description}\n\n---\nPriority: ${task.priority}\nEstimated hours: ${task.estimated_hours || 'N/A'}`,
+                  },
+                }),
+              });
+            } catch (error) {
+              console.error('Failed to add description update:', error);
+            }
+          }
+
           // Update task with Monday item ID
           await supabase
             .from('project_tasks')

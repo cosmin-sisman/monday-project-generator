@@ -43,12 +43,21 @@ export async function generateProjectStructure(
   input: string
 ): Promise<AIProjectOutput> {
   try {
+    // Load config from client (will be passed from API route)
+    const config = typeof window !== 'undefined' 
+      ? JSON.parse(localStorage.getItem('ai_config') || '{}')
+      : {};
+    
+    const systemPrompt = typeof window !== 'undefined'
+      ? localStorage.getItem('system_prompt') || SYSTEM_PROMPT
+      : SYSTEM_PROMPT;
+
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: config.model || 'gpt-4o',
       messages: [
         {
           role: 'system',
-          content: SYSTEM_PROMPT,
+          content: systemPrompt,
         },
         {
           role: 'user',
@@ -56,7 +65,11 @@ export async function generateProjectStructure(
         },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.7,
+      temperature: config.temperature || 0.7,
+      max_tokens: config.maxTokens || 4000,
+      top_p: config.topP || 1,
+      frequency_penalty: config.frequencyPenalty || 0,
+      presence_penalty: config.presencePenalty || 0,
     });
 
     const content = completion.choices[0]?.message?.content;

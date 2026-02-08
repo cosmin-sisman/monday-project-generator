@@ -1,23 +1,27 @@
+"use client";
+
 import { ProjectInput } from "@/components/ProjectInput";
-import { Header } from "@/components/Header";
+import { LayoutWithSidebar } from "./layout-with-sidebar";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Header />
-      <main className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-4">
-              Monday Project Generator
-            </h1>
-            <p className="text-xl text-gray-600">
-              Transform your ideas into structured Monday.com projects with AI
-            </p>
-          </div>
-          <ProjectInput />
+    <LayoutWithSidebar>
+      <div className="min-h-screen">
+        <div className="border-b bg-white px-8 py-6">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Monday Project Generator
+          </h1>
+          <p className="mt-2 text-gray-600">
+            Transform your ideas into structured Monday.com projects with AI
+          </p>
         </div>
-      </main>
-    </div>
+        
+        <div className="container mx-auto px-8 py-8">
+          <div className="max-w-4xl">
+            <ProjectInput />
+          </div>
+        </div>
+      </div>
+    </LayoutWithSidebar>
   );
 }
